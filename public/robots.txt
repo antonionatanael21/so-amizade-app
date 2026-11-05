@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /descobrir
+Allow: /comunidades
+Allow: /ajuda
+Allow: /termos
+Allow: /privacidade
+Allow: /diretrizes
+Disallow: /admin
+Disallow: /mensagens
+Disallow: /configuracoes
+
+Sitemap: https://soamizade.com.br/sitemap.xml

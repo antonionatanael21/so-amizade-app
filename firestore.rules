@@ -1,0 +1,378 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email_verified == true && (
+          request.auth.token.email == 'antonionatanael140@gmail.com' ||
+          request.auth.token.email == 'tecnomail09@gmail.com'
+        )) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isAdult() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.is18Plus == true;
+    }
+
+    // Admins Collection
+    match /admins/{adminId} {
+      allow read: if isAdmin() || isOwner(adminId);
+      allow write: if isAdmin();
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isAdmin() || isAdult() || isOwner(userId);
+      allow create: if isOwner(userId) &&
+        isValidId(userId) &&
+        incoming().id == userId &&
+        incoming().is18Plus is bool &&
+        (incoming().is18Plus == false || (
+          exists(/databases/$(database)/documents/users/$(userId)/private/identity) &&
+          get(/databases/$(database)/documents/users/$(userId)/private/identity).data.birthDate is string
+        )) &&
+        (incoming().role == 'user' || (isAdmin() && incoming().role == 'admin')) &&
+        incoming().plan == 'free' &&
+        incoming().isSuspended == false &&
+        incoming().isBanned == false &&
+        incoming().displayName is string && incoming().displayName.size() <= 70 &&
+        incoming().username is string && incoming().username.size() <= 30 &&
+        !incoming().keys().hasAny(['email', 'birthDate']);
+
+      allow update: if (
+        isAdmin() ||
+        (
+          isOwner(userId) &&
+          // The owner can edit public profile fields, but cannot restore private identity data
+          // or elevate their role, plan, or moderation state.
+          incoming().role == existing().role &&
+          incoming().plan == existing().plan &&
+          incoming().isSuspended == existing().isSuspended &&
+          incoming().isBanned == existing().isBanned &&
+          incoming().id == existing().id &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'displayName', 'username', 'bio', 'city', 'state', 'photoURL', 'coverURL',
+            'interests', 'hobbies', 'favoriteMovies', 'favoriteSeries', 'favoriteMusic',
+            'favoriteGames', 'favoriteTopics', 'allowFriendRequests', 'isProfilePublic',
+            'updatedAt', 'is18Plus', 'email', 'birthDate'
+          ]) &&
+          !incoming().diff(existing()).addedKeys().hasAny(['email', 'birthDate']) &&
+          !incoming().diff(existing()).changedKeys().hasAny(['email', 'birthDate']) &&
+          (incoming().is18Plus == existing().is18Plus ||
+            // Downgrading an old profile to unverified is always safe.
+            (existing().is18Plus == true && incoming().is18Plus == false) ||
+            // Upgrading requires a private birth-date record; age validation runs in the app/function.
+            (existing().is18Plus == false && incoming().is18Plus == true &&
+              exists(/databases/$(database)/documents/users/$(userId)/private/identity) &&
+              get(/databases/$(database)/documents/users/$(userId)/private/identity).data.birthDate is string))
+        )
+      );
+
+      allow delete: if isAdmin(); // Full account deletion must use a trusted backend.
+
+      // Private identity fields (e-mail and date of birth) are never public-profile data.
+      match /private/{privateDocumentId} {
+        allow read, create, update, delete: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Posts Collection
+    match /posts/{postId} {
+      allow read: if isAdult() || isAdmin();
+      allow create: if isAdult() &&
+        isValidId(postId) &&
+        incoming().id == postId &&
+        incoming().authorId == request.auth.uid &&
+        incoming().content is string && incoming().content.size() > 0 && incoming().content.size() <= 2000;
+
+      allow update: if isAdmin() || (
+        isAdult() && (
+          // Author editing post text
+          (existing().authorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'mediaUrl', 'isEdited', 'updatedAt'])) ||
+          // Public reaction/comment counters update
+          incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'commentsCount', 'sharesCount'])
+        )
+      );
+
+      allow delete: if isAdmin() || (isSignedIn() && existing().authorId == request.auth.uid);
+
+      // Comments subcollection
+      match /comments/{commentId} {
+        allow read: if isAdult() || isAdmin();
+        allow create: if isAdult() &&
+          isValidId(commentId) &&
+          incoming().authorId == request.auth.uid &&
+          incoming().postId == postId &&
+          incoming().content is string && incoming().content.size() > 0 && incoming().content.size() <= 1000;
+        allow update: if isAdmin() || (isSignedIn() && existing().authorId == request.auth.uid);
+        allow delete: if isAdmin() || (isSignedIn() && (existing().authorId == request.auth.uid || get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid));
+      }
+
+      // Likes subcollection
+      match /likes/{userId} {
+        allow read: if isAdult() || isAdmin();
+        allow create, update: if isAdult() &&
+          userId == request.auth.uid &&
+          incoming().userId == request.auth.uid &&
+          incoming().postId == postId;
+        allow delete: if isSignedIn() && userId == request.auth.uid;
+      }
+    }
+
+    // Friend Requests Collection
+    match /friendRequests/{requestId} {
+      allow read: if isAdult() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow create: if isAdult() &&
+        isValidId(requestId) &&
+        incoming().senderId == request.auth.uid &&
+        incoming().receiverId != request.auth.uid &&
+        incoming().status == 'pending';
+
+      allow update: if isAdult() && (
+        // Receiver accepting or rejecting
+        (existing().receiverId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+        // Sender cancelling
+        (existing().senderId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+      );
+
+      allow delete: if isAdult() && (
+        existing().senderId == request.auth.uid ||
+        existing().receiverId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Friendships Collection
+    match /friendships/{friendshipId} {
+      allow read: if isAdult() && (
+        resource.data.user1Id == request.auth.uid ||
+        resource.data.user2Id == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow create: if isAdult() && (
+        incoming().user1Id == request.auth.uid ||
+        incoming().user2Id == request.auth.uid
+      );
+
+      allow update: if isAdult() && (
+        existing().user1Id == request.auth.uid ||
+        existing().user2Id == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow delete: if isAdult() && (
+        existing().user1Id == request.auth.uid ||
+        existing().user2Id == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Conversations & Messages
+    match /conversations/{conversationId} {
+      allow read: if isAdult() && (
+        request.auth.uid in resource.data.participantIds ||
+        isAdmin()
+      );
+
+      allow create: if isAdult() &&
+        request.auth.uid in incoming().participantIds &&
+        incoming().participantIds.size() == 2;
+
+      allow update: if isAdult() && (
+        request.auth.uid in existing().participantIds &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['lastMessageText', 'lastMessageSenderId', 'updatedAt'])
+      );
+
+      allow delete: if isAdmin() || (isAdult() && request.auth.uid in existing().participantIds);
+
+      match /messages/{messageId} {
+        allow read: if isAdult() && (
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds ||
+          isAdmin()
+        );
+
+        allow create: if isAdult() &&
+          isValidId(messageId) &&
+          incoming().senderId == request.auth.uid &&
+          incoming().conversationId == conversationId &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds &&
+          incoming().text is string && incoming().text.size() > 0 && incoming().text.size() <= 2000;
+
+        allow update: if isAdult() && (
+          existing().senderId == request.auth.uid ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['read'])
+        );
+
+        allow delete: if isAdmin() || (isSignedIn() && existing().senderId == request.auth.uid);
+      }
+    }
+
+    // Communities Collection
+    match /communities/{communityId} {
+      allow read: if isAdult() || isAdmin();
+
+      allow create: if isAdult() &&
+        isValidId(communityId) &&
+        incoming().creatorId == request.auth.uid &&
+        incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 80 &&
+        incoming().slug is string && incoming().slug.size() <= 60;
+
+      allow update: if isAdmin() || (
+        isAdult() && (
+          (existing().creatorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'bannerUrl', 'iconUrl', 'rules', 'category'])) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['memberCount', 'postCount'])
+        )
+      );
+
+      allow delete: if isAdmin() || (isSignedIn() && existing().creatorId == request.auth.uid);
+
+      match /members/{memberId} {
+        allow read: if isAdult() || isAdmin();
+        allow create, update: if isAdult() && (
+          memberId == request.auth.uid ||
+          isAdmin()
+        );
+        allow delete: if isSignedIn() && (
+          memberId == request.auth.uid ||
+          get(/databases/$(database)/documents/communities/$(communityId)).data.creatorId == request.auth.uid ||
+          isAdmin()
+        );
+      }
+    }
+
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      allow read: if isAdult() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow create: if isAdult() && (
+        incoming().userId != request.auth.uid ||
+        isAdmin()
+      );
+
+      allow update: if isAdult() && (
+        existing().userId == request.auth.uid &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['read'])
+      );
+
+      allow delete: if isSignedIn() && (
+        existing().userId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Reports Collection (Strictly isolated: users can create, but only admins can list/manage)
+    match /reports/{reportId} {
+      allow read: if isAdmin() || (isAdult() && resource.data.reporterId == request.auth.uid);
+
+      allow create: if isAdult() &&
+        isValidId(reportId) &&
+        incoming().reporterId == request.auth.uid &&
+        incoming().reason is string && incoming().reason.size() <= 1000;
+
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Blocked Users
+    match /blockedUsers/{blockId} {
+      allow read: if isAdult() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow create: if isAdult() &&
+        incoming().userId == request.auth.uid;
+
+      allow delete: if isSignedIn() &&
+        existing().userId == request.auth.uid;
+    }
+
+    // Saved Posts
+    match /savedPosts/{savedId} {
+      allow read: if isAdult() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow create: if isAdult() &&
+        incoming().userId == request.auth.uid;
+
+      allow delete: if isSignedIn() &&
+        existing().userId == request.auth.uid;
+    }
+
+    // Official Announcements (Read by everyone authenticated, written by Admin)
+    match /officialAnnouncements/{announcementId} {
+      allow read: if isAdult() || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Audit Logs (Append-only by Admin, read only by Admin)
+    match /adminLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false; // Immutable!
+    }
+
+    // Subscriptions
+    match /subscriptions/{subId} {
+      allow read: if isAdult() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow write: if isAdmin();
+    }
+
+    // Account Appeals
+    match /accountAppeals/{appealId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAdult() &&
+        incoming().userId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

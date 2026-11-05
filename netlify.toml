@@ -1,0 +1,30 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# A rota de API precisa ser declarada antes do fallback da SPA.
+[[redirects]]
+  from = "/api/verify-age"
+  to = "/.netlify/functions/verify-age"
+  status = 200
+  force = true
+
+# Rotas do React: todas as demais URLs retornam a aplicação.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

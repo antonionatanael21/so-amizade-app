@@ -1,0 +1,6 @@
+{
+  "name": "SÓ AMIZADE - Rede Social de Amizades Verdadeiras",
+  "description": "Rede social exclusiva para pessoas com 18 anos ou mais, dedicada à construção de amizades verdadeiras, conversas saudáveis e comunidades.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

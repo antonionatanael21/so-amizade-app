@@ -1,0 +1,388 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account and profile information on Só Amizade",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "User Firebase Auth UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "username": { "type": "string", "maxLength": 30, "pattern": "^[a-z0-9_.-]+$", "description": "Unique handle" },
+        "displayName": { "type": "string", "maxLength": 70, "description": "Full display name" },
+        "photoURL": { "type": "string", "maxLength": 1000, "description": "Avatar image URL" },
+        "coverURL": { "type": "string", "maxLength": 1000, "description": "Cover background URL" },
+        "bio": { "type": "string", "maxLength": 500, "description": "User bio/about me" },
+        "city": { "type": "string", "maxLength": 60, "description": "City" },
+        "state": { "type": "string", "maxLength": 30, "description": "State (UF)" },
+        "birthDate": { "type": "string", "maxLength": 10, "description": "Private birth date for 18+ verification" },
+        "is18Plus": { "type": "boolean", "description": "Confirms user is 18 years of age or older" },
+        "isSuspended": { "type": "boolean", "description": "Account suspension status" },
+        "isBanned": { "type": "boolean", "description": "Permanent ban status" },
+        "suspensionReason": { "type": "string", "maxLength": 300, "description": "Reason for moderation action" },
+        "role": { "type": "string", "enum": ["user", "moderator", "admin"], "description": "Account permission role" },
+        "plan": { "type": "string", "enum": ["free", "plus"], "description": "Subscription tier" },
+        "interests": { "type": "array", "description": "Personal interests list" },
+        "hobbies": { "type": "array", "description": "Hobbies list" },
+        "favoriteMovies": { "type": "string", "maxLength": 200, "description": "Favorite movies" },
+        "favoriteSeries": { "type": "string", "maxLength": 200, "description": "Favorite series" },
+        "favoriteMusic": { "type": "string", "maxLength": 200, "description": "Favorite music genres or artists" },
+        "favoriteGames": { "type": "string", "maxLength": 200, "description": "Favorite games" },
+        "favoriteTopics": { "type": "string", "maxLength": 200, "description": "Conversation topics" },
+        "allowFriendRequests": { "type": "boolean", "description": "Allow anyone or friends only" },
+        "isProfilePublic": { "type": "boolean", "description": "Whether profile is visible to all authenticated users" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update timestamp" }
+      },
+      "required": ["id", "email", "username", "displayName", "is18Plus"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Feed post created by a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Post ID" },
+        "authorId": { "type": "string", "description": "Author UID" },
+        "authorName": { "type": "string", "maxLength": 70, "description": "Author name snapshot" },
+        "authorUsername": { "type": "string", "maxLength": 30, "description": "Author username snapshot" },
+        "authorPhotoURL": { "type": "string", "maxLength": 1000, "description": "Author avatar snapshot" },
+        "content": { "type": "string", "maxLength": 2000, "description": "Post text content" },
+        "mediaUrl": { "type": "string", "maxLength": 1000, "description": "Optional image URL" },
+        "communityId": { "type": "string", "maxLength": 100, "description": "Optional community ID" },
+        "communityName": { "type": "string", "maxLength": 100, "description": "Optional community name" },
+        "likesCount": { "type": "number", "description": "Total like reactions count" },
+        "commentsCount": { "type": "number", "description": "Total comments count" },
+        "sharesCount": { "type": "number", "description": "Total internal shares" },
+        "isEdited": { "type": "boolean", "description": "Whether post was edited" },
+        "createdAt": { "type": "string", "description": "Post creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last edit timestamp" }
+      },
+      "required": ["id", "authorId", "content"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Comment on a post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Comment ID" },
+        "postId": { "type": "string", "description": "Parent post ID" },
+        "authorId": { "type": "string", "description": "Comment author UID" },
+        "authorName": { "type": "string", "maxLength": 70, "description": "Author name" },
+        "authorUsername": { "type": "string", "maxLength": 30, "description": "Author username" },
+        "authorPhotoURL": { "type": "string", "maxLength": 1000, "description": "Author photo" },
+        "content": { "type": "string", "maxLength": 1000, "description": "Comment text" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["id", "postId", "authorId", "content"]
+    },
+    "Reaction": {
+      "title": "Reaction",
+      "description": "Like or friendship reaction on a post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "User UID who reacted" },
+        "postId": { "type": "string", "description": "Post ID" },
+        "userId": { "type": "string", "description": "User UID" },
+        "type": { "type": "string", "enum": ["love", "handshake", "cheer", "inspire", "hug"], "description": "Reaction type" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["id", "postId", "userId", "type"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "Friend request sent from one user to another",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Request ID" },
+        "senderId": { "type": "string", "description": "Sender UID" },
+        "senderName": { "type": "string", "maxLength": 70, "description": "Sender name snapshot" },
+        "senderUsername": { "type": "string", "maxLength": 30, "description": "Sender handle" },
+        "senderPhotoURL": { "type": "string", "maxLength": 1000, "description": "Sender avatar" },
+        "receiverId": { "type": "string", "description": "Target receiver UID" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "cancelled"], "description": "Request status" },
+        "createdAt": { "type": "string", "description": "Sent timestamp" },
+        "updatedAt": { "type": "string", "description": "Updated timestamp" }
+      },
+      "required": ["id", "senderId", "receiverId", "status"]
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "Bidirectional friendship record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Friendship ID (user1Id_user2Id)" },
+        "user1Id": { "type": "string", "description": "First friend UID" },
+        "user2Id": { "type": "string", "description": "Second friend UID" },
+        "status": { "type": "string", "enum": ["active", "removed"], "description": "Friendship status" },
+        "createdAt": { "type": "string", "description": "Friendship start timestamp" }
+      },
+      "required": ["id", "user1Id", "user2Id", "status"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Direct message thread between two friends",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Conversation ID" },
+        "participantIds": { "type": "array", "description": "List of the two friend UIDs" },
+        "lastMessageText": { "type": "string", "maxLength": 500, "description": "Snippet of last message" },
+        "lastMessageSenderId": { "type": "string", "description": "Sender UID of last message" },
+        "updatedAt": { "type": "string", "description": "Timestamp of latest activity" }
+      },
+      "required": ["id", "participantIds"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Direct chat message inside a conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Message ID" },
+        "conversationId": { "type": "string", "description": "Parent conversation ID" },
+        "senderId": { "type": "string", "description": "Sender UID" },
+        "senderName": { "type": "string", "maxLength": 70, "description": "Sender name" },
+        "text": { "type": "string", "maxLength": 2000, "description": "Message text" },
+        "mediaUrl": { "type": "string", "maxLength": 1000, "description": "Optional image URL" },
+        "read": { "type": "boolean", "description": "Whether message was read" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["id", "conversationId", "senderId", "text"]
+    },
+    "Community": {
+      "title": "Community",
+      "description": "Interest-based community for members",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Community ID" },
+        "name": { "type": "string", "maxLength": 80, "description": "Community name" },
+        "slug": { "type": "string", "maxLength": 60, "pattern": "^[a-z0-9-]+$", "description": "URL slug" },
+        "description": { "type": "string", "maxLength": 1000, "description": "Community description" },
+        "category": { "type": "string", "maxLength": 50, "description": "Category name" },
+        "bannerUrl": { "type": "string", "maxLength": 1000, "description": "Banner cover URL" },
+        "iconUrl": { "type": "string", "maxLength": 1000, "description": "Icon avatar URL" },
+        "rules": { "type": "string", "maxLength": 2000, "description": "Community specific rules" },
+        "creatorId": { "type": "string", "description": "Creator user UID" },
+        "creatorName": { "type": "string", "maxLength": 70, "description": "Creator display name" },
+        "memberCount": { "type": "number", "description": "Total members" },
+        "postCount": { "type": "number", "description": "Total posts inside community" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "name", "slug", "description", "category", "creatorId"]
+    },
+    "CommunityMember": {
+      "title": "CommunityMember",
+      "description": "Membership of a user in a community",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Member ID (user UID)" },
+        "communityId": { "type": "string", "description": "Community ID" },
+        "userId": { "type": "string", "description": "User UID" },
+        "role": { "type": "string", "enum": ["member", "moderator", "admin"], "description": "Role in community" },
+        "joinedAt": { "type": "string", "description": "Joined timestamp" }
+      },
+      "required": ["id", "communityId", "userId", "role"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app persistent notification for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Notification ID" },
+        "userId": { "type": "string", "description": "Target recipient UID" },
+        "senderId": { "type": "string", "description": "Originating user UID" },
+        "senderName": { "type": "string", "maxLength": 70, "description": "Originating user name" },
+        "senderPhotoURL": { "type": "string", "maxLength": 1000, "description": "Originating user avatar" },
+        "type": { "type": "string", "enum": ["friend_request", "friend_accept", "comment", "reaction", "message", "community", "announcement", "warning"], "description": "Notification type" },
+        "title": { "type": "string", "maxLength": 100, "description": "Notification title" },
+        "message": { "type": "string", "maxLength": 300, "description": "Notification message body" },
+        "link": { "type": "string", "maxLength": 200, "description": "Target route in app" },
+        "read": { "type": "boolean", "description": "Read status" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["id", "userId", "type", "title", "message"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Moderation report filed by a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Report ID" },
+        "reporterId": { "type": "string", "description": "Reporting user UID" },
+        "reporterEmail": { "type": "string", "description": "Reporting user email" },
+        "targetType": { "type": "string", "enum": ["user", "post", "comment", "message", "community"], "description": "Target type" },
+        "targetId": { "type": "string", "maxLength": 128, "description": "Target ID" },
+        "targetAuthorId": { "type": "string", "maxLength": 128, "description": "Target user UID" },
+        "category": { "type": "string", "enum": ["sexual_dating", "harassment", "underage", "hate_speech", "fake_scam", "spam", "privacy_breach"], "description": "Violation category" },
+        "reason": { "type": "string", "maxLength": 1000, "description": "Detailed description of violation" },
+        "evidence": { "type": "string", "maxLength": 1000, "description": "Evidence URL or quote" },
+        "status": { "type": "string", "enum": ["pending", "investigating", "resolved", "dismissed"], "description": "Moderation status" },
+        "priority": { "type": "string", "enum": ["high", "medium", "low"], "description": "Severity priority" },
+        "reviewedBy": { "type": "string", "description": "Moderator UID/email" },
+        "resolution": { "type": "string", "maxLength": 500, "description": "Resolution notes" },
+        "createdAt": { "type": "string", "description": "Report timestamp" }
+      },
+      "required": ["id", "reporterId", "targetType", "targetId", "category", "reason", "status", "priority"]
+    },
+    "BlockedUser": {
+      "title": "BlockedUser",
+      "description": "Record of a user blocking another user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Block record ID (userId_blockedUserId)" },
+        "userId": { "type": "string", "description": "User who blocked" },
+        "blockedUserId": { "type": "string", "description": "User who was blocked" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["id", "userId", "blockedUserId"]
+    },
+    "SavedPost": {
+      "title": "SavedPost",
+      "description": "Bookmark of a post for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Bookmark ID (userId_postId)" },
+        "userId": { "type": "string", "description": "User UID" },
+        "postId": { "type": "string", "description": "Saved post ID" },
+        "createdAt": { "type": "string", "description": "Timestamp" }
+      },
+      "required": ["id", "userId", "postId"]
+    },
+    "OfficialAnnouncement": {
+      "title": "OfficialAnnouncement",
+      "description": "Platform-wide broadcast announcement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Announcement ID" },
+        "title": { "type": "string", "maxLength": 120, "description": "Headline" },
+        "content": { "type": "string", "maxLength": 3000, "description": "Official announcement text" },
+        "priority": { "type": "string", "enum": ["normal", "urgent", "safety"], "description": "Alert level" },
+        "authorEmail": { "type": "string", "description": "Admin author email" },
+        "createdAt": { "type": "string", "description": "Broadcast timestamp" }
+      },
+      "required": ["id", "title", "content", "priority"]
+    },
+    "AdminLog": {
+      "title": "AdminLog",
+      "description": "Immutable audit log of administrative action",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Log entry ID" },
+        "adminId": { "type": "string", "description": "Admin user UID" },
+        "adminEmail": { "type": "string", "description": "Admin email" },
+        "action": { "type": "string", "maxLength": 100, "description": "Action executed" },
+        "targetType": { "type": "string", "maxLength": 50, "description": "Target affected entity type" },
+        "targetId": { "type": "string", "maxLength": 128, "description": "Target ID" },
+        "details": { "type": "string", "maxLength": 1000, "description": "Action details/justification" },
+        "createdAt": { "type": "string", "description": "Audit timestamp" }
+      },
+      "required": ["id", "adminId", "adminEmail", "action", "details"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "User premium subscription record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Subscription record ID" },
+        "userId": { "type": "string", "description": "Subscribing user UID" },
+        "planId": { "type": "string", "enum": ["plus_monthly", "plus_annual"], "description": "Plan identifier" },
+        "status": { "type": "string", "enum": ["active", "pending", "cancelled", "expired"], "description": "Payment/subscription status" },
+        "amount": { "type": "number", "description": "Price in BRL" },
+        "currency": { "type": "string", "maxLength": 3, "description": "BRL" },
+        "provider": { "type": "string", "description": "mercadopago" },
+        "preferenceId": { "type": "string", "maxLength": 128, "description": "Mercado Pago preference ID" },
+        "paymentId": { "type": "string", "maxLength": 128, "description": "Mercado Pago payment ID" },
+        "validUntil": { "type": "string", "description": "Subscription expiry ISO timestamp" },
+        "createdAt": { "type": "string", "description": "Created at" },
+        "updatedAt": { "type": "string", "description": "Updated at" }
+      },
+      "required": ["id", "userId", "planId", "status", "amount"]
+    },
+    "AccountAppeal": {
+      "title": "AccountAppeal",
+      "description": "User appeal against account suspension or warning",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Appeal ID" },
+        "userId": { "type": "string", "description": "Appealing user UID" },
+        "userEmail": { "type": "string", "description": "User email" },
+        "reason": { "type": "string", "maxLength": 2000, "description": "Explanation and defense" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"], "description": "Status" },
+        "submittedAt": { "type": "string", "description": "Submission timestamp" },
+        "moderatorNotes": { "type": "string", "maxLength": 1000, "description": "Moderator decision notes" }
+      },
+      "required": ["id", "userId", "userEmail", "reason", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile and account information"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Feed and community social posts"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments attached to a post"
+    },
+    "/posts/{postId}/likes/{userId}": {
+      "schema": "Reaction",
+      "description": "User reactions and likes on a post"
+    },
+    "/friendRequests/{requestId}": {
+      "schema": "FriendRequest",
+      "description": "Friend request invitations"
+    },
+    "/friendships/{friendshipId}": {
+      "schema": "Friendship",
+      "description": "Active friendships between users"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "Direct message conversations"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Chat messages in conversation"
+    },
+    "/communities/{communityId}": {
+      "schema": "Community",
+      "description": "Thematic friendship communities"
+    },
+    "/communities/{communityId}/members/{userId}": {
+      "schema": "CommunityMember",
+      "description": "Member records in community"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User in-app notifications"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Safety violation reports"
+    },
+    "/blockedUsers/{blockId}": {
+      "schema": "BlockedUser",
+      "description": "Blocked user relationships"
+    },
+    "/savedPosts/{savedId}": {
+      "schema": "SavedPost",
+      "description": "Saved posts bookmarks"
+    },
+    "/officialAnnouncements/{announcementId}": {
+      "schema": "OfficialAnnouncement",
+      "description": "Official broadcast announcements"
+    },
+    "/adminLogs/{logId}": {
+      "schema": "AdminLog",
+      "description": "Administrative actions audit log"
+    },
+    "/subscriptions/{subId}": {
+      "schema": "Subscription",
+      "description": "User premium subscriptions"
+    },
+    "/accountAppeals/{appealId}": {
+      "schema": "AccountAppeal",
+      "description": "Account suspension appeals"
+    }
+  }
+}

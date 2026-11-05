@@ -1,0 +1,18 @@
+{
+  "name": "SÓ AMIZADE - Rede Social de Amizades",
+  "short_name": "SÓ AMIZADE",
+  "description": "Amizades verdadeiras começam aqui. Exclusivo para 18+ com foco em respeito e comunidade.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
