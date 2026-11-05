@@ -28,3 +28,8 @@
     X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    [[redirects]]
+  from = "/__/auth/*"
+  to = "https://gen-lang-client-0767997957.firebaseapp.com/__/auth/:splat"
+  status = 200
+  force = true
